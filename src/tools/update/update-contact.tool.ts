@@ -3,10 +3,17 @@ import { z } from "zod";
 import { DeepLinkType, getDeepLink } from "../../helpers/get-deeplink.js";
 import { ensureError } from "../../helpers/ensure-error.js";
 import { CreateXeroTool } from "../../helpers/create-xero-tool.js";
+import {
+  contactFieldsShape,
+  describeContactFields,
+} from "../../helpers/contact-fields.js";
 
 const UpdateContactTool = CreateXeroTool(
   "update-contact",
   "Update a contact in Xero.\
+ Only the fields that are passed are changed (no defaults are applied). \
+ When a delivery address is passed without a billing address, the billing \
+ address is set to the same value unless billingSameAsDelivery is false. \
  When a contact is updated, a deep link to the contact in Xero is returned. \
  This deep link can be used to view the contact in Xero directly. \
  This link should be displayed to the user.",
@@ -17,16 +24,10 @@ const UpdateContactTool = CreateXeroTool(
     lastName: z.string().optional(),
     email: z.string().email().optional(),
     phone: z.string().optional(),
-    address: z
-      .object({
-        addressLine1: z.string(),
-        addressLine2: z.string().optional(),
-        city: z.string().optional(),
-        region: z.string().optional(),
-        postalCode: z.string().optional(),
-        country: z.string().optional(),
-      })
-      .optional(),
+    address: contactFieldsShape.deliveryAddress.describe(
+      "Deprecated alias of deliveryAddress.",
+    ),
+    ...contactFieldsShape,
   },
   async ({
     contactId,
@@ -36,21 +37,8 @@ const UpdateContactTool = CreateXeroTool(
     email,
     phone,
     address,
-  }: {
-    contactId: string;
-    name: string;
-    email?: string;
-    phone?: string;
-    address?: {
-      addressLine1: string;
-      addressLine2?: string;
-      city?: string;
-      region?: string;
-      postalCode?: string;
-      country?: string;
-    };
-    firstName?: string;
-    lastName?: string;
+    deliveryAddress,
+    ...extra
   }) => {
     try {
       const response = await updateXeroContact(
@@ -60,7 +48,7 @@ const UpdateContactTool = CreateXeroTool(
         lastName,
         email,
         phone,
-        address,
+        { ...extra, deliveryAddress: deliveryAddress ?? address },
       );
       if (response.isError) {
         return {
@@ -85,6 +73,7 @@ const UpdateContactTool = CreateXeroTool(
             type: "text" as const,
             text: [
               `Contact updated: ${contact.name} (ID: ${contact.contactID})`,
+              ...describeContactFields(contact),
               deepLink ? `Link to view: ${deepLink}` : null,
             ]
               .filter(Boolean)
@@ -99,7 +88,7 @@ const UpdateContactTool = CreateXeroTool(
         content: [
           {
             type: "text" as const,
-            text: `Error creating contact: ${err.message}`,
+            text: `Error updating contact: ${err.message}`,
           },
         ],
       };

@@ -164,6 +164,7 @@ payroll.timesheets
 - `list-aged-payables-by-contact`: Retrieves aged payables for a contact
 - `list-contact-groups`: Retrieve a list of contact groups
 - `list-tracking-categories`: Retrieve a list of tracking categories
+- `list-branding-themes`: Retrieve a list of branding themes
 - `create-bank-transaction`: Create a new bank transaction
 - `create-contact`: Create a new contact
 - `create-credit-note`: Create a new credit note

@@ -1,8 +1,12 @@
 import { xeroClient } from "../clients/xero-client.js";
 import { XeroClientResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
-import { Contact, Phone, Address, Contacts } from "xero-node";
+import { Contact, Phone, Contacts } from "xero-node";
 import { getClientHeaders } from "../helpers/get-client-headers.js";
+import {
+  buildContactFields,
+  ContactFieldsInput,
+} from "../helpers/contact-fields.js";
 
 async function updateContact(
   name: string,
@@ -10,12 +14,16 @@ async function updateContact(
   lastName: string | undefined,
   email: string | undefined,
   phone: string | undefined,
-  address: Address | undefined,
+  extra: ContactFieldsInput,
   contactId: string,
 ): Promise<Contact | undefined> {
   await xeroClient.authenticate();
 
+  // No defaults on update: only the fields that were passed are changed.
+  const { fields } = await buildContactFields(extra, false);
+
   const contact: Contact = {
+    ...fields,
     name,
     firstName,
     lastName,
@@ -25,19 +33,6 @@ async function updateContact(
           {
             phoneNumber: phone,
             phoneType: Phone.PhoneTypeEnum.MOBILE,
-          },
-        ]
-      : undefined,
-    addresses: address
-      ? [
-          {
-            addressType: Address.AddressTypeEnum.STREET,
-            addressLine1: address.addressLine1,
-            addressLine2: address.addressLine2,
-            city: address.city,
-            country: address.country,
-            postalCode: address.postalCode,
-            region: address.region,
           },
         ]
       : undefined,
@@ -60,7 +55,7 @@ async function updateContact(
 }
 
 /**
- * Create a new invoice in Xero
+ * Update an existing contact in Xero
  */
 export async function updateXeroContact(
   contactId: string,
@@ -69,7 +64,7 @@ export async function updateXeroContact(
   lastName?: string,
   email?: string,
   phone?: string,
-  address?: Address,
+  extra: ContactFieldsInput = {},
 ): Promise<XeroClientResponse<Contact>> {
   try {
     const updatedContact = await updateContact(
@@ -78,7 +73,7 @@ export async function updateXeroContact(
       lastName,
       email,
       phone,
-      address,
+      extra,
       contactId,
     );
 
