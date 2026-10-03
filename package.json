@@ -1,7 +1,7 @@
 {
-  "name": "@xeroapi/xero-mcp-server",
-  "version": "0.0.16",
-  "description": "MCP server implementation for Xero integration",
+  "name": "@noraina/xero-mcp-server",
+  "version": "0.0.16-noraina.1",
+  "description": "Xero MCP server (fork with refresh-token auth mode)",
   "license": "MIT",
   "main": "dist/index.js",
   "repository": {
@@ -10,7 +10,10 @@
   },
   "author": "Xero (https://xero.com)",
   "type": "module",
-  "bin": "./dist/index.js",
+  "bin": {
+    "xero-mcp-server": "./dist/index.js",
+    "xero-mcp-login": "./dist/login.js"
+  },
   "files": [
     "dist"
   ],

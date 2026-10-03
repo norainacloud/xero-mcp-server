@@ -1,5 +1,7 @@
 # Xero MCP Server
 
+> **Noraina fork:** adds an auto-refreshing OAuth2 auth mode for regions without Custom Connections. See [NORAINA.md](NORAINA.md).
+
 This is a Model Context Protocol (MCP) server implementation for Xero. It provides a bridge between the MCP protocol and Xero's API, allowing for standardized access to Xero's accounting and business features.
 
 ## Features

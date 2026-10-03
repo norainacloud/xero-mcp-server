@@ -8,15 +8,31 @@ import {
 } from "xero-node";
 
 import { ensureError } from "../helpers/ensure-error.js";
+import {
+  defaultTokenFile,
+  RefreshingTokenProvider,
+} from "./refresh-token-store.js";
 
 dotenv.config();
 
 const client_id = process.env.XERO_CLIENT_ID;
 const client_secret = process.env.XERO_CLIENT_SECRET;
 const bearer_token = process.env.XERO_CLIENT_BEARER_TOKEN;
+const refresh_token = process.env.XERO_REFRESH_TOKEN;
+const tenant_id_override = process.env.XERO_TENANT_ID;
 const grant_type = "client_credentials";
 
-if (!bearer_token && (!client_id || !client_secret)) {
+// Refresh-token mode (authorization code / PKCE apps, for regions without
+// Custom Connections such as Ireland). Enabled explicitly with
+// XERO_AUTH_MODE=refresh_token, or implicitly when XERO_REFRESH_TOKEN is set.
+const use_refresh_mode =
+  process.env.XERO_AUTH_MODE === "refresh_token" || !!refresh_token;
+
+if (use_refresh_mode) {
+  if (!client_id) {
+    throw Error("Refresh-token mode requires XERO_CLIENT_ID");
+  }
+} else if (!bearer_token && (!client_id || !client_secret)) {
   throw Error("Environment Variables not set - please check your .env file");
 }
 
@@ -220,12 +236,54 @@ class BearerTokenXeroClient extends MCPXeroClient {
   }
 }
 
-export const xeroClient = bearer_token
-  ? new BearerTokenXeroClient({
-      bearerToken: bearer_token,
-    })
-  : new CustomConnectionsXeroClient({
-      clientId: client_id!,
-      clientSecret: client_secret!,
-      grantType: grant_type,
-    });
+class RefreshTokenXeroClient extends MCPXeroClient {
+  private readonly provider: RefreshingTokenProvider;
+  private tenantResolved = false;
+
+  constructor(provider: RefreshingTokenProvider) {
+    super();
+    this.provider = provider;
+  }
+
+  async authenticate(): Promise<void> {
+    const accessToken = await this.provider.getAccessToken();
+    this.setTokenSet({ access_token: accessToken, token_type: "Bearer" });
+
+    if (!this.tenantResolved) {
+      if (tenant_id_override) {
+        this.tenantId = tenant_id_override;
+      } else {
+        await this.updateTenants(false);
+        if (!this.tenantId) {
+          throw new Error(
+            "Token has no connected Xero organisation (empty /connections). Re-run the login and select an organisation.",
+          );
+        }
+      }
+      this.tenantResolved = true;
+    }
+  }
+}
+
+function createClient(): MCPXeroClient {
+  if (use_refresh_mode) {
+    return new RefreshTokenXeroClient(
+      new RefreshingTokenProvider(
+        client_id!,
+        client_secret || undefined,
+        defaultTokenFile(),
+        refresh_token,
+      ),
+    );
+  }
+  if (bearer_token) {
+    return new BearerTokenXeroClient({ bearerToken: bearer_token });
+  }
+  return new CustomConnectionsXeroClient({
+    clientId: client_id!,
+    clientSecret: client_secret!,
+    grantType: grant_type,
+  });
+}
+
+export const xeroClient = createClient();
