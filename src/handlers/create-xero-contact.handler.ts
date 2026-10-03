@@ -3,6 +3,7 @@ import { XeroClientResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 import { Contact, Phone } from "xero-node";
 import { getClientHeaders } from "../helpers/get-client-headers.js";
+import { fetchContact } from "./get-xero-contact.handler.js";
 import {
   buildContactFields,
   ContactFieldsInput,
@@ -48,7 +49,11 @@ async function createContact(
   );
 
   const created = response.body.contacts?.[0];
-  return created ? { contact: created, warnings } : undefined;
+  if (!created?.contactID) return undefined;
+
+  // The create response omits fields such as SalesDefaultLineAmountType and
+  // BrandingTheme, so read the contact back to report what Xero stored.
+  return { contact: await fetchContact(created.contactID), warnings };
 }
 
 /**

@@ -3,6 +3,7 @@ import { XeroClientResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 import { Contact, Phone, Contacts } from "xero-node";
 import { getClientHeaders } from "../helpers/get-client-headers.js";
+import { fetchContact } from "./get-xero-contact.handler.js";
 import {
   buildContactFields,
   ContactFieldsInput,
@@ -51,7 +52,11 @@ async function updateContact(
   );
 
   const updatedContact = response.body.contacts?.[0];
-  return updatedContact;
+  if (!updatedContact?.contactID) return undefined;
+
+  // The update response omits fields such as SalesDefaultLineAmountType and
+  // BrandingTheme, so read the contact back to report what Xero stored.
+  return fetchContact(updatedContact.contactID);
 }
 
 /**

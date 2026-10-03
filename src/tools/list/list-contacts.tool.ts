@@ -4,7 +4,9 @@ import { z } from "zod";
 
 const ListContactsTool = CreateXeroTool(
   "list-contacts",
-  "List all contacts in Xero. This includes Suppliers and Customers.",
+  "List all contacts in Xero. This includes Suppliers and Customers. \
+This is a summary: some settings (e.g. branding theme, payment terms) may be \
+missing here; use get-contact to see a contact's full settings.",
   {
     page: z.number().optional().describe("Optional page number to retrieve for pagination. \
       If not provided, the first page will be returned. If 100 contacts are returned, \
@@ -58,6 +60,22 @@ const ListContactsTool = CreateXeroTool(
                 .filter(Boolean)
                 .join(", ") || "Unknown"
             }`,
+            contact.salesDefaultLineAmountType
+              ? `Sales Tax Mode: ${contact.salesDefaultLineAmountType}`
+              : null,
+            contact.purchasesDefaultLineAmountType
+              ? `Purchases Tax Mode: ${contact.purchasesDefaultLineAmountType}`
+              : null,
+            contact.companyNumber
+              ? `Business Registration: ${contact.companyNumber}`
+              : null,
+            contact.taxNumber ? `Tax Registration: ${contact.taxNumber}` : null,
+            contact.brandingTheme?.brandingThemeID
+              ? `Branding Theme: ${contact.brandingTheme.name ?? contact.brandingTheme.brandingThemeID}`
+              : null,
+            contact.paymentTerms?.sales?.type !== undefined
+              ? `Sales Payment Terms: ${contact.paymentTerms.sales.day} ${contact.paymentTerms.sales.type}`
+              : null,
             contact.defaultCurrency
               ? `Default Currency: ${contact.defaultCurrency}`
               : null,
